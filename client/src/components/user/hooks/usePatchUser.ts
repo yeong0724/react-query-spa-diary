@@ -1,37 +1,32 @@
-import jsonpatch from "fast-json-patch";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import type { User } from "@shared/types";
+import type { User } from '@shared/types';
 
-import { axiosInstance, getJWTHeader } from "../../../axiosInstance";
-import { useUser } from "./useUser";
+import { useCustomToast } from '@/components/app/hooks/useCustomToast';
+import { patchUserOnServer } from '@/components/user/api';
+import { useUser } from '@/components/user/hooks/useUser';
+import { queryKeys } from '@/react-query/constants';
 
-// for when we need a server function
-// async function patchUserOnServer(
-//   newData: User | null,
-//   originalData: User | null,
-//  ): Promise<User | null> {
-//   if (!newData || !originalData) return null;
-//   // create a patch for the difference between newData and originalData
-//   const patch = jsonpatch.compare(originalData, newData);
-
-//   // send patched data to the server
-//   const { data } = await axiosInstance.patch(
-//     `/user/${originalData.id}`,
-//     { patch },
-//     {
-//       headers: getJWTHeader(originalData.token),
-//     },
-//   );
-//   return data.user;
-//  }
+export const MUTATION_KEY = 'patch-user';
 
 export function usePatchUser() {
-  const { user, updateUser } = useUser();
+  const queryClient = useQueryClient();
+  const { user } = useUser();
+  const toast = useCustomToast();
 
-  // TODO: replace with mutate function
-  const patchUser = (newData: User | null) => {
-    // nothing to see here
-  };
+  const { mutate: patchUser } = useMutation({
+    mutationKey: [MUTATION_KEY],
+    mutationFn: (updateUser: User) => patchUserOnServer(updateUser, user),
+    onSuccess: () => {
+      toast({
+        title: 'User information updated successfully',
+        status: 'success',
+      });
+    },
+    onSettled: () => {
+      return queryClient.invalidateQueries({ queryKey: [queryKeys.user] });
+    },
+  });
 
   return patchUser;
 }
